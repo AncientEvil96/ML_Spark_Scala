@@ -43,7 +43,7 @@ object MLForIMDB {
 
     val pipeline = new Pipeline().setStages(components.toArray)
 
-    var model = pipeline.fit(training)
+    val model = pipeline.fit(training)
 
     val test = spark.createDataFrame(Seq(
       (4L, "spark i j k"),
