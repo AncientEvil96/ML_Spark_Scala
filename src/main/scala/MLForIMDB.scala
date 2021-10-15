@@ -1,10 +1,8 @@
-import org.apache.spark
 import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature.{HashingTF, StopWordsRemover, Tokenizer}
-import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.StructType
+import scala.collection.mutable.ArrayBuffer
 
 object MLForIMDB {
   def main(args: Array[String]): Unit = {
@@ -16,6 +14,8 @@ object MLForIMDB {
       ("spark f g h", 1.0),
       ("hadoop mapreduce", 0.0)
     )).toDF("text", "label")
+
+
 
     val tokenizer = new Tokenizer()
       .setInputCol("text")
@@ -34,12 +34,61 @@ object MLForIMDB {
       .setMaxIter(10)
       .setRegParam(0.001)
 
-    steps: => Seq[PipelineStage]
+    var components = new ArrayBuffer[PipelineStage]
+    components += tokenizer
+    components += remover
+    components += hashingTF
+    components += lr
 
-
-    val pipeline = new Pipeline().setStages(steps.toArray);
+    val pipeline = new Pipeline().setStages(components.toArray);
 
   }
+
+//  package com.tencent.angel.spark.automl.feature.preprocess
+//
+//  import org.apache.spark.ml.PipelineStage
+//  import org.apache.spark.ml.feature.{StopWordsRemover, Tokenizer}
+//  import org.apache.spark.sql.DataFrame
+//
+//  import scala.collection.mutable.ArrayBuffer
+//
+//  object Components {
+//
+//    def sample(data: DataFrame,
+//               fraction: Double): DataFrame = {
+//      data.sample(false, fraction)
+//    }
+//
+//    def addSampler(components: ArrayBuffer[PipelineStage],
+//                   inputCol: String,
+//                   fraction: Double): Unit = {
+//      val sampler = new Sampler(fraction)
+//        .setInputCol("features")
+//      components += sampler
+//    }
+//
+//    def addTokenizer(components: ArrayBuffer[PipelineStage],
+//                     inputCol: String,
+//                     outputCol: String): Unit = {
+//      val tokenizer = new Tokenizer()
+//        .setInputCol(inputCol)
+//        .setOutputCol(outputCol)
+//      components += tokenizer
+//    }
+//
+//    def addStopWordsRemover(components: ArrayBuffer[PipelineStage],
+//                            inputCol: String,
+//                            outputCol: String): Unit = {
+//      val remover = new StopWordsRemover()
+//        .setInputCol(inputCol)
+//        .setOutputCol(outputCol)
+//      components += remover
+//    }
+//
+//  }
+
+
+
   //    val training = spark.createDataFrame(Seq(
   //    (0L, "a b c d e spark", 1.0),
   //    (1L, "b d", 0.0),
