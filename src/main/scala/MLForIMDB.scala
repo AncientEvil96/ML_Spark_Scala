@@ -1,8 +1,9 @@
 import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature.{HashingTF, StopWordsRemover, Tokenizer}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Row, SparkSession}
 import scala.collection.mutable.ArrayBuffer
+
 
 object MLForIMDB {
   def main(args: Array[String]): Unit = {
@@ -27,20 +28,36 @@ object MLForIMDB {
 
     val hashingTF = new HashingTF()
       .setNumFeatures(1000)
-      .setInputCol(remover.getOutputCol())
+      .setInputCol(remover.getOutputCol)
       .setOutputCol("features")
 
     val lr = new LogisticRegression()
       .setMaxIter(10)
       .setRegParam(0.001)
 
-    var components = new ArrayBuffer[PipelineStage]
+    val components = new ArrayBuffer[PipelineStage]
     components += tokenizer
     components += remover
     components += hashingTF
     components += lr
 
-    val pipeline = new Pipeline().setStages(components.toArray);
+    val pipeline = new Pipeline().setStages(components.toArray)
+
+    var model = pipeline.fit(training)
+
+    val test = spark.createDataFrame(Seq(
+      (4L, "spark i j k"),
+      (5L, "l m n"),
+      (6L, "spark hadoop spark"),
+      (7L, "apache hadoop")
+    )).toDF("id", "text")
+
+    model.transform(test)
+      .select("id", "text", "probability", "prediction")
+      .collect()
+//      .foreach { case Row(id: Long, text: String, prob: Vector, prediction: Double) =>
+//        println(s"($id, $text) --> prob=$prob, prediction=$prediction")
+//      }
 
   }
 
