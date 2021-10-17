@@ -15,8 +15,8 @@ object MLForIMDB {
 
     val tr_input = "Train.csv"
     val ts_input = "Valid.csv"
-    //    val tr_input = args(0)
-    //    val ts_input = args(1)
+    //        val tr_input = args(0)
+    //        val ts_input = args(1)
     //    val output = args(2)
 
     val spark = SparkSession.builder()
@@ -81,23 +81,29 @@ object MLForIMDB {
       .option("quote", "\"")
       .option("escape", "\"")
       .csv(ts_input)
-      .withColumn("label", col("label").cast(DataTypes.FloatType))
+      .withColumn("label", col("label").cast(DataTypes.DoubleType))
 
     val test_model = model.transform(test).cache()
 
-    test_model.limit(10).show()
+//        test_model.limit(10).show()
 
-    val predictionAndLabels = test_model
-      .select($"prediction", $"label".cast(DataTypes.DoubleType)) // это я тут баловался можно было изначально в Double сделать
-//      .withColumn("label", col("label").cast(DataTypes.DoubleType)) //а это в качестве теста
-      .map{ case Row(prediction: Double, label: Double) =>
-     (prediction, label)}.rdd
+    test_model
+      .withColumn("true_answer", ($"label" === $"prediction").cast(DataTypes.ByteType))
+      .select("text","true_answer")
+      .summary("true_answer")
+      .count()
 
-    val metrics = new MulticlassMetrics(predictionAndLabels)
-
-    val accuracy = metrics.accuracy
-
-    println(s"Your accuracy:$accuracy")
+    //    val predictionAndLabels = test_model
+    //      .select($"prediction", $"label".cast(DataTypes.DoubleType)) // это я тут баловался можно было изначально в Double сделать
+    ////      .withColumn("label", col("label").cast(DataTypes.DoubleType)) //а это в качестве теста
+    //      .map{ case Row(prediction: Double, label: Double) =>
+    //     (prediction, label)}.rdd
+    //
+    //    val metrics = new MulticlassMetrics(predictionAndLabels)
+    //
+    //    val accuracy = metrics.accuracy
+    //
+    //    println(s"Your accuracy:$accuracy")
 
     //    // Overall Statistics
     //    val accuracy = metrics.accuracy
@@ -140,90 +146,3 @@ object MLForIMDB {
 //hdfs dfs -ls /user/hduser/ppkm-df-out
 //hdfs dfs -cat /user/hduser/ppkm-df-out/*
 //hdfs dfs -rm -r -skipTrash ppkm-df-out
-
-//  package com.tencent.angel.spark.automl.feature.preprocess
-//
-//  import org.apache.spark.ml.PipelineStage
-//  import org.apache.spark.ml.feature.{StopWordsRemover, Tokenizer}
-//  import org.apache.spark.sql.DataFrame
-//
-//  import scala.collection.mutable.ArrayBuffer
-//
-//  object Components {
-//
-//    def sample(data: DataFrame,
-//               fraction: Double): DataFrame = {
-//      data.sample(false, fraction)
-//    }
-//
-//    def addSampler(components: ArrayBuffer[PipelineStage],
-//                   inputCol: String,
-//                   fraction: Double): Unit = {
-//      val sampler = new Sampler(fraction)
-//        .setInputCol("features")
-//      components += sampler
-//    }
-//
-//    def addTokenizer(components: ArrayBuffer[PipelineStage],
-//                     inputCol: String,
-//                     outputCol: String): Unit = {
-//      val tokenizer = new Tokenizer()
-//        .setInputCol(inputCol)
-//        .setOutputCol(outputCol)
-//      components += tokenizer
-//    }
-//
-//    def addStopWordsRemover(components: ArrayBuffer[PipelineStage],
-//                            inputCol: String,
-//                            outputCol: String): Unit = {
-//      val remover = new StopWordsRemover()
-//        .setInputCol(inputCol)
-//        .setOutputCol(outputCol)
-//      components += remover
-//    }
-//
-//  }
-
-
-//    val training = spark.createDataFrame(Seq(
-//    (0L, "a b c d e spark", 1.0),
-//    (1L, "b d", 0.0),
-//    (2L, "spark f g h", 1.0),
-//    (3L, "hadoop mapreduce", 0.0)
-//  )).toDF("id", "text", "label")
-//
-//  val tokenizer = new Tokenizer()
-//    .setInputCol("text")
-//    .setOutputCol("words")
-//  val hashingTF = new HashingTF()
-//    .setNumFeatures(1000)
-//    .setInputCol(tokenizer.getOutputCol())
-//    .setOutputCol("features")
-//  val stopwordsremover = new StopWordsRemover()
-//    .setInputCol("raw")
-//    .setOutputCol("filtered")
-//  val lr = new LogisticRegression()
-//    .setMaxIter(10)
-//    .setRegParam(0.001)
-//  val pipeline = new Pipeline()
-//    .setStages(new PipelineStage[] {
-//      tokenizer
-//      , hashingTF
-//      , lr
-//    });
-//
-//  val model = pipeline.fit(training);
-//
-//  val test = spark.createDataFrame(Seq(
-//    (4L, "spark i j k"),
-//    (5L, "l m n"),
-//    (6L, "spark hadoop spark"),
-//    (7L, "apache hadoop")
-//  )).toDF("id", "text")
-//
-//  model.transform(test)
-//    .select("id", "text", "probability", "prediction")
-//    .collect()
-//    .foreach { case Row(id: Long, text: String, prob: Vector, prediction: Double) =>
-//      println(s"($id, $text) --> prob=$prob, prediction=$prediction")
-//    }
