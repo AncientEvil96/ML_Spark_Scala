@@ -1,10 +1,10 @@
 import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.ml.classification.LogisticRegression
-import org.apache.spark.ml.feature.{HashingTF, StopWordsRemover, Tokenizer}
+import org.apache.spark.ml.feature.{HashingTF, LabeledPoint, StopWordsRemover, Tokenizer}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, json_tuple}
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
@@ -12,6 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object MLForIMDB {
   def main(args: Array[String]): Unit = {
+
     val tr_input = "Train.csv"
     val ts_input = "Valid.csv"
     //    val tr_input = args(0)
@@ -22,6 +23,8 @@ object MLForIMDB {
       .master("local[*]")
       .appName("Test DataFrame")
       .getOrCreate()
+
+    import spark.sqlContext.implicits._
 
     //    val training = spark.createDataFrame(Seq(
     //      ("a b c d e spark", 1.0),
@@ -80,6 +83,30 @@ object MLForIMDB {
       .csv(ts_input)
       .withColumn("label", col("label").cast(DataTypes.FloatType))
 
+    val test_model = model.transform(test).cache()
+
+    test_model.limit(10).show()
+
+    val predictionAndLabels = test_model
+      .select($"prediction", $"label".cast(DataTypes.DoubleType)) // это я тут баловался можно было изначально в Double сделать
+//      .withColumn("label", col("label").cast(DataTypes.DoubleType))
+      .map{ case Row(prediction: Double, label: Double) =>
+     (prediction, label)}.rdd
+
+//    val predictionAndLabels = test_model.map { case LabeledPoint(label, prediction) =>
+//      (prediction, label)
+//    }
+    val metrics = new MulticlassMetrics(predictionAndLabels)
+
+    val accuracy = metrics.accuracy
+
+    println(s"Your accuracy:$accuracy")
+
+    //    // Overall Statistics
+    //    val accuracy = metrics.accuracy
+    //    println("Summary Statistics")
+    //    println(s"Accuracy = $accuracy")
+
     //    model.transform(test)
     //      .select("id", "text", "probability", "prediction").limit(10)
     //      .collect()
@@ -87,10 +114,10 @@ object MLForIMDB {
     //        println(s"($id, $text) --> prob=$prob, prediction=$prediction")
     //      }
 
-//    model.transform(test)
-//      .select("text", "probability", "prediction")
-//      .limit(10)
-//      .show()
+    //    model.transform(test)
+    //      .select("text", "probability", "prediction")
+    //      .limit(10)
+    //      .show()
     //      .collect()
     //      .foreach { case Row(text: String, prob: Vector, prediction: Double) =>
     //          println(s"($text) --> prob=$prob, prediction=$prediction")
@@ -104,7 +131,7 @@ object MLForIMDB {
     //                    println(s"($text) --> prob=$prob, prediction=$prediction")
     //                  }
 
-//    val accuracy = new MulticlassMetrics(predictions.zip(labels)).accuracy
+    //    val accuracy = new MulticlassMetrics(predictions.zip(labels)).accuracy
     spark.stop()
   }
 }
