@@ -89,13 +89,10 @@ object MLForIMDB {
 
     val predictionAndLabels = test_model
       .select($"prediction", $"label".cast(DataTypes.DoubleType)) // это я тут баловался можно было изначально в Double сделать
-//      .withColumn("label", col("label").cast(DataTypes.DoubleType))
+//      .withColumn("label", col("label").cast(DataTypes.DoubleType)) //а это в качестве теста
       .map{ case Row(prediction: Double, label: Double) =>
      (prediction, label)}.rdd
 
-//    val predictionAndLabels = test_model.map { case LabeledPoint(label, prediction) =>
-//      (prediction, label)
-//    }
     val metrics = new MulticlassMetrics(predictionAndLabels)
 
     val accuracy = metrics.accuracy
