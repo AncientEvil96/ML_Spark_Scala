@@ -1,10 +1,9 @@
 import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.ml.classification.LogisticRegression
-import org.apache.spark.ml.feature.{HashingTF, LabeledPoint, StopWordsRemover, Tokenizer}
+import org.apache.spark.ml.feature.{HashingTF, StopWordsRemover, Tokenizer}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.sql.functions.{col, json_tuple}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
@@ -13,14 +12,14 @@ import scala.collection.mutable.ArrayBuffer
 object MLForIMDB {
   def main(args: Array[String]): Unit = {
 
-    val tr_input = "Train.csv"
-    val ts_input = "Valid.csv"
-    //        val tr_input = args(0)
-    //        val ts_input = args(1)
-    //    val output = args(2)
+    //    val tr_input = "Train.csv"
+    //    val ts_input = "Valid.csv"
+    val tr_input = args(0)
+    val ts_input = args(1)
+    val output = args(2)
 
     val spark = SparkSession.builder()
-      .master("local[*]")
+//      .master("local[*]")
       .appName("Test DataFrame")
       .getOrCreate()
 
@@ -85,13 +84,18 @@ object MLForIMDB {
 
     val test_model = model.transform(test).cache()
 
-//        test_model.limit(10).show()
-
     test_model
       .withColumn("true_answer", ($"label" === $"prediction").cast(DataTypes.ByteType))
-      .select("text","true_answer")
-      .summary("true_answer")
-      .count()
+      .select("text", "true_answer")
+      .agg(
+        sum("true_answer").as("sum_true_answer"),
+        count("text").as("count_")
+      )
+      .withColumn("accuracy", $"sum_true_answer" * 100 / $"count_")
+      .repartition(1) //сделаем 1 партицию вместо 200
+      .write.mode("overwrite")
+      .option("sep", ";") // поменяли раздилитель
+      .csv(output)
 
     //    val predictionAndLabels = test_model
     //      .select($"prediction", $"label".cast(DataTypes.DoubleType)) // это я тут баловался можно было изначально в Double сделать
@@ -141,8 +145,6 @@ object MLForIMDB {
 
 //docker cp target/scala-2.11/scala_spark_ml_2.11-0.1.jar gbhdp:/home/hduser/
 //
-//spark-submit --class MLForIMDB --master yarn --deploy-mode cluster scala_spark_ml_2.11-0.1.jar /user/hduser/imdb/Train.csv /user/hduser/imdb/Test.csv
+//spark-submit --class MLForIMDB --master yarn --deploy-mode cluster scala_spark_ml_2.11-0.1.jar /user/hduser/imdb/Train.csv /user/hduser/imdb/Valid.csv
 //
-//hdfs dfs -ls /user/hduser/ppkm-df-out
-//hdfs dfs -cat /user/hduser/ppkm-df-out/*
-//hdfs dfs -rm -r -skipTrash ppkm-df-out
+//hdfs dfs -ls /user/hduser/imdb
